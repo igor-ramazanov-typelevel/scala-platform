@@ -1,9 +1,38 @@
-val scala212 = "2.12.17"
-val scala213 = "2.13.10"
-val scala3   = "3.2.2"
+import org.typelevel.sbt.gha.WorkflowStep.Run
+import org.typelevel.sbt.gha.WorkflowStep.Sbt
+
+val scala213 = "2.13.16"
+val scala3   = "3.3.6"
+
+ThisBuild / githubOwner                    := "igor-ramazanov-typelevel"
+ThisBuild / githubRepository               := "scala-platform"
+ThisBuild / githubWorkflowPublishPreamble  := List.empty
+ThisBuild / githubWorkflowUseSbtThinClient := true
+ThisBuild / githubWorkflowPublish := List(
+  Run(
+    commands = List("echo \"$PGP_SECRET\" | gpg --import"),
+    id = None,
+    name = Some("Import PGP key"),
+    env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"),
+    params = Map(),
+    timeoutMinutes = None,
+    workingDirectory = None
+  ),
+  Sbt(
+    commands = List("+ publish"),
+    id = None,
+    name = Some("Publish"),
+    cond = None,
+    env = Map("GITHUB_TOKEN" -> "${{ secrets.GB_TOKEN }}"),
+    params = Map.empty,
+    timeoutMinutes = None,
+    preamble = true
+  )
+)
+ThisBuild / gpgWarnOnFailure := false
 
 ThisBuild / scalaVersion       := scala213
-ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
+ThisBuild / crossScalaVersions := Seq(scala213, scala3)
 ThisBuild / tlBaseVersion      := "1.0"
 
 // publishing info
@@ -65,8 +94,10 @@ lazy val platform =
         }
       },
       libraryDependencies ++= Seq(
-        "org.scalameta" %%% "munit" % "1.0.0-M7" % Test,
+        "org.scalameta" %%% "munit" % "1.1.1" % Test,
       ),
-      mimaPreviousArtifacts := Set("0.2.0", "1.0.0", "1.0.1", "1.0.2").map(organization.value %%% name.value % _),
-      mimaFailOnNoPrevious  := true,
+      mimaFailOnNoPrevious      := false,
+      publishTo                 := githubPublishTo.value,
+      publishConfiguration      := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
     )
